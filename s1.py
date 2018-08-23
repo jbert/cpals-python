@@ -2,13 +2,32 @@
 
 from base64 import b64encode
 from util import *
+import itertools
 
 
 def main():
-    c4()
-    c3()
-    c2()
-    c1()
+    c5()
+#    c4()
+#    c3()
+#    c2()
+#    c1()
+
+
+def encrypt_xor(plain_text, key):
+    key_iter = itertools.cycle(key)
+    return bytes(map(lambda b: b ^ next(key_iter), plain_text))
+
+
+def c5():
+    plain_text = b"""Burning 'em, if you ain't quick and nimble
+I go crazy when I hear a cymbal"""
+    key = b"ICE"
+    cipher_text = encrypt_xor(plain_text, key)
+    print("JB - pt is [{}]".format(plain_text))
+    expected_hex = """0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272
+a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"""
+    expected = hex2bytes(expected_hex)
+    print("S1C5 - cipher_text is [{}]: correct {}".format(cipher_text.hex(), expected == cipher_text))
 
 
 def c4():
