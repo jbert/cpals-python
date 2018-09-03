@@ -6,14 +6,63 @@ import itertools
 
 
 def main():
-    c5()
+    c6()
+#    c5()
 #    c4()
 #    c3()
 #    c2()
 #    c1()
 
 
-def encrypt_xor(plain_text, key):
+def c6():
+    cipher_text = slurp_base64_file('6.txt')
+
+    def keysize_distance(key_size):
+        chunks = chunk(cipher_text, key_size)
+        return (hamming_distance(chunks[0], chunks[1])
+              + hamming_distance(chunks[1], chunks[2])
+              + hamming_distance(chunks[2], chunks[3])
+              ) / (3 * key_size)
+
+    keysize_distances = [ (key_size, keysize_distance(key_size)) for key_size in range(2, 41) ]
+    # Sort smallest distance first
+    keysize_distances = sorted(keysize_distances, key=lambda kd: kd[1])
+
+    # Try first 5
+    def kd_to_pt_score(kd):
+        key_size = kd[0]
+
+        chunks = chunk(cipher_text, key_size)
+        chunks = transpose(chunks)
+        key = bytes(map(lambda t: t[1], map(c4_best_single_byte_xor, chunks)))
+
+        plain_text = decrypt_xor(key, cipher_text)
+
+        score = english_score(plain_text)
+        return(score, plain_text)
+
+    guesses = map(kd_to_pt_score, keysize_distances[:4])
+    guesses = sorted(guesses, reverse=True)
+    plain_text = guesses[0][1]
+    print("S1C6 : {}".format(plain_text.decode('ascii')))
+
+
+def hamming_distance(a, b):
+    bits = xor_buf(a, b)
+    return popcount(bits)
+
+
+def popcount(buf):
+    count = 0
+    for b in buf:
+        count += bin(b).count('1')
+    return count
+
+
+def decrypt_xor(key, plain_text):
+    return encrypt_xor(key, plain_text)
+
+def encrypt_xor(key, plain_text):
     key_iter = itertools.cycle(key)
     return bytes(map(lambda b: b ^ next(key_iter), plain_text))
 
@@ -22,8 +71,7 @@ def c5():
     plain_text = b"""Burning 'em, if you ain't quick and nimble
 I go crazy when I hear a cymbal"""
     key = b"ICE"
-    cipher_text = encrypt_xor(plain_text, key)
-    print("JB - pt is [{}]".format(plain_text))
+    cipher_text = encrypt_xor(key, plain_text)
     expected_hex = """0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272
 a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"""
     expected = hex2bytes(expected_hex)
@@ -77,22 +125,25 @@ def xor_byte(buf, key):
 #    return 1.0 / distance
 
 def english_score(buf):
-    score = 0.0
+    score = 0
     tier1 = b"etaoin"
     tier2 = b"shrdlu"
 
     for b in buf:
-        b = b | 0x20    # lowercase
+        if b >= ord('A') and b <= ord('Z'):
+            b = b | 0x20    # lowercase
         if b >= ord('a') and b <= ord('z'):
-            score += 1;
+            score += 1
             if b in tier1:
                 score += 2
             elif b in tier2:
                 score += 1
         elif b == ord(' '):
             score += 3
-        else:
+        elif b == ord('.') or ord(',') or ord('\'') or ord('"'):
             score += 0
+        else:
+            score -= 1
 
     return score / len(buf)
 
@@ -112,6 +163,8 @@ def c2():
 
 
 def xor_buf(a_s, b_s):
+    if len(a_s) != len(b_s):
+        raise RuntimeError("xor_buf: different lengths {} != {}".format(len(a_s), len(b_s)))
     return bytes([a ^ b for (a, b) in zip(a_s, b_s)])
 
 
