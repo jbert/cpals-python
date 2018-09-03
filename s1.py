@@ -6,13 +6,28 @@ import itertools
 from Crypto.Cipher import AES
 
 def main():
-    c7()
+    c8()
+#    c7()
 #    c6()
 #    c5()
 #    c4()
 #    c3()
 #    c2()
 #    c1()
+
+
+def c8():
+    lines = slurp_hex_file_as_lines("8.txt")
+    block_size = 16
+
+    lineno = 0
+    for line in lines:
+        chunks = chunk(line, block_size)
+        distinct_chunks = set(chunks)
+        if len(distinct_chunks) != len(chunks):
+            print("Line {} has dup chunks".format(lineno))
+            break
+        lineno += 1
 
 
 def c7():

@@ -1,4 +1,4 @@
-__all__ = [ 'transpose', 'hex2bytes', 'chunk', 'slurp_base64_file' ]
+__all__ = [ 'transpose', 'hex2bytes', 'chunk', 'slurp_base64_file', 'slurp_hex_file_as_lines' ]
 
 from base64 import b64decode
 
@@ -10,12 +10,21 @@ def hex2bytes(hex_str):
 def chunk(buf, size):
     return [buf[i:i+size] for i in range(0, len(buf), size)]
 
+
 def transpose(chunks):
     chunk_len = len(chunks[0])
     return [bytes(filter(None, map(lambda c: c[i] if len(c) > i else None, chunks))) for i in range(0, chunk_len)]
+
 
 def slurp_base64_file(fname):
     with open(fname) as f:
         lines = f.readlines()
 
     return b64decode(''.join(lines))
+
+
+def slurp_hex_file_as_lines(fname):
+    with open(fname) as f:
+        lines = f.readlines()
+
+    return list(map(hex2bytes, lines))
