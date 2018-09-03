@@ -3,15 +3,25 @@
 from base64 import b64encode
 from util import *
 import itertools
-
+from Crypto.Cipher import AES
 
 def main():
-    c6()
+    c7()
+#    c6()
 #    c5()
 #    c4()
 #    c3()
 #    c2()
 #    c1()
+
+
+def c7():
+    key = b"YELLOW SUBMARINE"
+    cipher_text = slurp_base64_file("7.txt")
+
+    cipher = AES.new(key, AES.MODE_ECB)
+    plain_text = cipher.decrypt(cipher_text)
+    print("S1C7 plain text: {}".format(plain_text.decode('ascii')))
 
 
 def c6():
