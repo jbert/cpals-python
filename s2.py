@@ -1,11 +1,42 @@
 #!/usr/bin/python3
 from Crypto.Cipher import AES
 import itertools
+import random
 from util import *
 from s1 import xor_buf
 
 def main():
-    c10()
+    c11()
+
+
+def c11():
+    block_size = 16 # we're doing AES128
+    for i in range(10):
+        plain_text = bytes(block_size * 10)    # A lot of repetition, which repeats under ECB
+        cipher_text = c11_encrypt_ecb_or_cbc_oracle(plain_text)
+        chunks = chunk(cipher_text, block_size)
+        distinct_chunks = set(chunks)
+        if len(chunks) != len(distinct_chunks):
+            print("S2C11 - guess ECB!")
+        else:
+            print("S2C11 - guess CBC!")
+
+
+def c11_encrypt_ecb_or_cbc_oracle(plain_text):
+    block_size = 16
+    key = get_random_bytes(block_size)
+
+    prefix = get_random_bytes(10)
+    suffix = get_random_bytes(10)
+    msg = pkcs7_pad(prefix + plain_text + suffix, block_size)
+
+    if random.random() >= 0.5:
+        print("S2C11 - doing CBC")
+        iv = get_random_bytes(16)
+        return aes128_cbc_encode(key, iv, msg)
+    else:
+        print("S2C11 - doing ECB")
+        return aes128_ecb_encode(key, msg)
 
 
 def c10():
@@ -17,6 +48,16 @@ def c10():
     print("S1C10 msg is {}".format(plain_text.decode('ascii')))
     recipher_text = aes128_cbc_encode(key, iv, plain_text);
     print("Re-encode matches? : {}".format(recipher_text == cipher_text))
+
+
+def aes128_ecb_encode(key, plain_text):
+    ecb_cipher = AES.new(key, AES.MODE_ECB)
+    return ecb_cipher.encrypt(plain_text)
+
+
+def aes128_ecb_decode(key, plain_text):
+    ecb_cipher = AES.new(key, AES.MODE_ECB)
+    return ecb_cipher.decrypt(plain_text)
 
 
 def aes128_cbc_encode(key, iv, plain_text):

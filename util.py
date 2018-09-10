@@ -1,10 +1,26 @@
-__all__ = [ 'pkcs7_pad', 'pkcs7_unpad', 'transpose', 'hex2bytes', 'chunk', 'slurp_base64_file', 'slurp_hex_file_as_lines' ]
+__all__ = [
+        'get_random_bytes',
+        'pkcs7_pad',
+        'pkcs7_unpad',
+        'transpose',
+        'hex2bytes',
+        'chunk',
+        'slurp_base64_file',
+        'slurp_hex_file_as_lines',
+        ]
 
 from base64 import b64decode
 import itertools
+from random import randrange
+
+
+def get_random_bytes(size):
+    return b''.join(map(lambda x: bytes([randrange(0, 256)]), itertools.repeat(0, size)))
+
 
 def pkcs7_unpad(buf, block_size):
     raise RuntimeError("pkcs7_unpad: bad padding")
+
 
 def pkcs7_pad(buf, block_size):
     chunks = chunk(buf, block_size)
