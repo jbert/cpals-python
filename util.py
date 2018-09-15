@@ -19,7 +19,15 @@ def get_random_bytes(size):
 
 
 def pkcs7_unpad(buf, block_size):
-    raise RuntimeError("pkcs7_unpad: bad padding")
+    num_to_remove = buf[-1]
+    if num_to_remove < 1 or num_to_remove > block_size:
+        raise RuntimeError("pkcs7_unpad: bad padding value")
+    for i in range(0, num_to_remove):
+        b = buf[-(i+1)]
+        if b != num_to_remove:
+            raise RuntimeError("pkcs7_unpad: invalid byte at {}: {} != {}".i, num_to_remove, b)
+
+    return buf[:-num_to_remove]
 
 
 def pkcs7_pad(buf, block_size):

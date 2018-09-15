@@ -4,9 +4,103 @@ import itertools
 import random
 from util import *
 from s1 import xor_buf
+from base64 import b64decode
 
 def main():
-    c11()
+    c12()
+
+
+def c12():
+
+    unknown_key = get_random_bytes(16)
+    oracle = lambda pt: c12_encryption_oracle(unknown_key, pt)
+
+    # Shim is number of bytes to fill a block
+    (block_size, shim_size) = c12_discover_block_and_shim_sizes(oracle)
+    print("S2C12 - found block size {}".format(block_size))
+
+    is_ecb = c12_detect_ecb(oracle, block_size)
+    print("S2C12 - is ECB?:  {}".format(is_ecb))
+
+    known_bytes = bytearray()
+
+    for index in range(0, 10 * block_size):
+        block_index = index // block_size
+        chunk_index = index % block_size
+        
+#        print("block_index {} chunk_index {}".format(block_index, chunk_index))
+
+        needed_pad_len = (block_size - 1) - chunk_index
+        needed_pad = bytes(needed_pad_len)
+
+        trick_block = bytearray(block_size) + known_bytes
+        trick_block = trick_block[-(block_size-1):]
+
+        block_dictionary = c12_make_block_dictionary(oracle, block_size, trick_block)
+        cipher_text = oracle(needed_pad)
+
+        cipher_chunks = chunk(cipher_text, block_size)
+        interesting_chunk = cipher_chunks[index // block_size]
+#        print("C0: {}".format(interesting_chunk))
+        try:
+            plain_text_byte = block_dictionary[interesting_chunk]
+        except KeyError:
+            break
+            
+        known_bytes.append(plain_text_byte)
+#        print("Got byte: {}".format(plain_text_byte))
+#        print("Got known bytes: {}".format(known_bytes))
+
+    plain_text = pkcs7_unpad(known_bytes, block_size)
+    print("S2C12 - got msg: {}", plain_text.decode('ascii'))
+
+
+def c12_make_block_dictionary(oracle, block_size, prefix):
+
+    if len(prefix) != block_size - 1:
+        raise RuntimeError("sanity violation: {} != {}".format(block_size-1, len(prefix)))
+
+    d = {}
+    for b in range(0, 256):
+        msg = bytearray(prefix)
+        msg.append(b)
+        cipher_text = oracle(msg)
+        cipher_chunks = chunk(cipher_text, block_size)
+        d[cipher_chunks[0]] = b
+
+    return d
+
+
+def c12_detect_ecb(oracle, block_size):
+
+    repeated_blocks = bytes(block_size * 4)
+    cipher_text = oracle(repeated_blocks)
+    chunks = chunk(cipher_text, block_size)
+    distinct_chunks = set(chunks)
+    return len(chunks) != len(distinct_chunks)
+
+
+def c12_discover_block_and_shim_sizes(oracle):
+
+    zero_len = len(oracle(b''))
+    for shim_size in range(1, 1000):
+        ct = oracle(bytes(shim_size))
+        if len(ct) != zero_len:
+            return (len(ct) - zero_len, shim_size - 1)
+
+    raise RuntimeError("Failed to find block size up to {}".format(max_block_size))
+
+
+def c12_encryption_oracle(key, chosen_plain_text):
+    block_size = 16
+
+    secret_suffix = b64decode("""Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+YnkK""")
+    msg = pkcs7_pad(chosen_plain_text + secret_suffix, block_size)
+
+    return aes128_ecb_encode(key, msg)
 
 
 def c11():
