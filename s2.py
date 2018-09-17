@@ -7,7 +7,77 @@ from s1 import xor_buf
 from base64 import b64decode
 
 def main():
-    c12()
+    c13()
+
+
+def c13():
+    block_size = 16
+    secret_key = get_random_bytes(block_size)
+    encryptor = lambda email_address: aes128_ecb_encode(secret_key, pkcs7_pad(c13_profile_for(email_address), block_size))
+    decryptor = lambda cipher_text: c13_parse_kv(pkcs7_unpad(aes128_ecb_decode(secret_key, cipher_text), block_size))
+
+    target_cipher_block = b''
+    # The minimum amount of prefix padding to cause a duplicated block
+    # will give us the target block in the next block
+    for repeat_pad_size in range(2*block_size - 1, 3 * block_size):
+        repeat_pad = b"A" * repeat_pad_size
+        trick_email_address = repeat_pad + pkcs7_pad(b"admin", block_size) + b"@example.com"
+        cipher_text = encryptor(trick_email_address)
+
+        chunks = chunk(cipher_text, block_size)
+        # If we have a repeat, the block after repeat is target
+        next_is_target = False
+        target_cipher_chunk = b''
+        last_chunk = b''
+        for c in chunks:
+            if next_is_target:
+                target_cipher_block = c
+                break
+            next_is_target = (c == last_chunk)
+            last_chunk = c
+        if target_cipher_block != b'':
+            break
+
+    if target_cipher_block == b'':
+        raise RuntimeError("Didn't find target cipher block")
+
+    # At some padding between 0..block_size the end block should
+    # be 'user<pkcspadding>'. If so, replacing it with our
+    # target cipher block should give us something which will decode
+    # to our desired plaintext
+    for padding_size in range(0 ,block_size):
+        padded_email_address = (b"A" * padding_size) + b"@example.com"
+
+        cipher_text = encryptor(padded_email_address);
+        # Splice in target block
+        cipher_text = bytearray(cipher_text)
+        cipher_text[-block_size:] = target_cipher_block
+        cipher_text = bytes(cipher_text)
+        try:
+            profile = decryptor(cipher_text)
+            if profile[b"role"] == b"admin":
+                print("S2C13 - did it! got an admin role")
+                return
+        except (KeyError, ValueError):
+            pass
+
+    print("S2C13 fail. Bad coder, no biscuit");
+
+
+def c13_profile_for(email_address):
+    email_address = email_address.replace(b'&', b'')
+    email_address = email_address.replace(b'=', b'')
+    profile = {
+            b"email": email_address,
+            b"uid": b"10",
+            b"role": b"user",
+            }
+    return b'&'.join(map(lambda k: k + b'=' + profile[k], profile))
+
+
+def c13_parse_kv(buf):
+    kvs = buf.split(b'&')
+    return dict(map(lambda buf: buf.split(b'='), kvs))
 
 
 def c12():
