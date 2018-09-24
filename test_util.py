@@ -1,4 +1,4 @@
-from util import *
+from util import chunk, transpose
 
 
 def test_chunk():

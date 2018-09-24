@@ -37,7 +37,7 @@ def pkcs7_pad(buf, block_size):
     if missing == 0:
         missing = block_size
 
-    addition = bytes(itertools.repeat(missing, missing)) 
+    addition = bytes(itertools.repeat(missing, missing))
     chunks.append(addition)
 
     return b''.join(chunks)

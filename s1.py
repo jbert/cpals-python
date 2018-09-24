@@ -1,19 +1,13 @@
 #!/usr/bin/python3
 
 from base64 import b64encode
-from util import *
+from util import chunk, slurp_base64_file, slurp_hex_file_as_lines, transpose, hex2bytes
 import itertools
 from Crypto.Cipher import AES
 
+
 def main():
     c8()
-#    c7()
-#    c6()
-#    c5()
-#    c4()
-#    c3()
-#    c2()
-#    c1()
 
 
 def c8():
@@ -45,11 +39,11 @@ def c6():
     def keysize_distance(key_size):
         chunks = chunk(cipher_text, key_size)
         return (hamming_distance(chunks[0], chunks[1])
-              + hamming_distance(chunks[1], chunks[2])
-              + hamming_distance(chunks[2], chunks[3])
-              ) / (3 * key_size)
+                + hamming_distance(chunks[1], chunks[2])
+                + hamming_distance(chunks[2], chunks[3])
+                ) / (3 * key_size)
 
-    keysize_distances = [ (key_size, keysize_distance(key_size)) for key_size in range(2, 41) ]
+    keysize_distances = [(key_size, keysize_distance(key_size)) for key_size in range(2, 41)]
     # Sort smallest distance first
     keysize_distances = sorted(keysize_distances, key=lambda kd: kd[1])
 
@@ -87,6 +81,7 @@ def popcount(buf):
 def decrypt_xor(key, plain_text):
     return encrypt_xor(key, plain_text)
 
+
 def encrypt_xor(key, plain_text):
     key_iter = itertools.cycle(key)
     return bytes(map(lambda b: b ^ next(key_iter), plain_text))
@@ -112,7 +107,6 @@ def c4():
 
 
 def c4_best_single_byte_xor(buf):
-#    key_tuple = max([(english_score(xor_byte(buf, i)), i) for i in range(0, 256)], key=lambda t: t[0])
     key_tuple = max([(english_score(xor_byte(buf, i)), i) for i in range(0, 256)])
     key_score = key_tuple[0]
     key_byte = key_tuple[1]
@@ -133,7 +127,7 @@ def xor_byte(buf, key):
     return bytes([b ^ key for b in buf])
 
 
-#def english_score(buf):
+# def english_score(buf):
 #    expected_order = list(map(lambda c: ord(c), " etaoinshrdlcumwfgypbvkjxqz_"))
 #    expected_set = set(expected_order)
 #    # Downcase any letters, then map all non-alphaspace to '_'
@@ -144,9 +138,9 @@ def xor_byte(buf, key):
 #    order = list(map(lambda byte_count: byte_count[0], sorted_counts))
 #
 #    distance = 1 + order_distance(expected_order, order)
-##    unlikelihood = 0.0
-##    for b in mapped_buf:
-##        unlikelihood += expected_order.index(b)
+# #    unlikelihood = 0.0
+# #    for b in mapped_buf:
+# #        unlikelihood += expected_order.index(b)
 #    return 1.0 / distance
 
 def english_score(buf):
