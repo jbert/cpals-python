@@ -1,4 +1,5 @@
-from util import chunk, transpose
+import pytest
+from util import chunk, transpose, pkcs7_unpad
 
 
 def test_chunk():
@@ -14,3 +15,14 @@ def test_transpose():
     assert(transpose(chunks) == [b'14', b'25', b'36'])
     chunks = [b'123', b'456', b'7']
     assert(transpose(chunks) == [b'147', b'25', b'36'])
+
+
+def test_pkcs7_unpad():
+    block_size = 16
+    assert(pkcs7_unpad(b"ICE ICE BABY\x04\x04\x04\x04", block_size) == b"ICE ICE BABY")
+    with pytest.raises(RuntimeError) as e_info:
+        pkcs7_unpad(b"ICE ICE BABY\x05\x05\x05\x05", block_size) 
+    with pytest.raises(RuntimeError) as e_info:
+        pkcs7_unpad(b"ICE ICE BABY\x01\x02\x03\x04", block_size) 
+    with pytest.raises(RuntimeError) as e_info:
+        pkcs7_unpad(b"ICE ICE BABY\x01", block_size) 
