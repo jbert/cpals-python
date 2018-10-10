@@ -26,22 +26,25 @@ def c14():
     recovered_plain_text = bytearray()
     chosen_plain_text = bytearray()
     while True:
+
+        # We construct a (block_size - 1) piece plain text. Which
+        # ends in the our recovered plain text and is prepended with enough
+        # pad_char to make the size
         chosen_plain_text[:] = recovered_plain_text
-        chosen_plain_text_length = len(chosen_plain_text)
         if len(chosen_plain_text) > block_size - 1:
-                chosen_plain_text = chosen_plain_text[chosen_plain_text_length - (block_size - 1):]
+                chosen_plain_text = chosen_plain_text[-(block_size - 1):]
 
         added_pad = max(0, (block_size - 1) - len(chosen_plain_text))
-        chosen_plain_text += pad_char * added_pad
-
+        chosen_plain_text = bytearray(pad_char * added_pad) + chosen_plain_text
         assert len(chosen_plain_text) == block_size - 1, "Using correct size chosen_plain_text block"
 
+        # By prepending with enough pad_chars and appending with bytes 0->255,
+        # and repeating until we get block_size different
+        # answers, we find 'block_size' candidate cipher blocks for each possible end byte
         dictionary = c14_dictionary_for_block(oracle, block_size, chosen_plain_text)
 
         next_byte = None
         for num_attempts in range(0, 10*block_size):
-
-            # Now use the same amount of pad chars
             pad = pad_char * added_pad
             cipher_text = oracle(pad)
             for c in chunk(cipher_text, block_size):
@@ -51,14 +54,11 @@ def c14():
                 except KeyError:
                     pass
 
-            if next_byte is not None:
-                break
-
         if next_byte is None:
             raise RuntimeError("Failed to find next byte in {} iterations", num_attempts)
 
         recovered_plain_text.append(next_byte)
-        print("Recovered: {}", recovered_plain_text)
+        print("{}".format(recovered_plain_text.decode('ascii')))
 
     print("S2C14 msg is {}", recovered_plain_text)
 
@@ -127,29 +127,33 @@ def c14_discover_block_size(oracle):
 def c14_dictionary_for_block(oracle, block_size, chosen_plain_text):
     assert len(chosen_plain_text) == block_size - 1, "Using correct size chosen_plain_text block"
 
-    enough_padding_for_only_two_duplicates = b'A' * ((3 * block_size) - 1)
+    dictionary = dict()
+    duplicates = set()
+    enough_padding_for_duplicates = b'_' * ((3 * block_size) - 1)
     for end_byte in range(0, 256):
 
-        plain_text = bytearray(enough_padding_for_only_two_duplicates)
+        plain_text = bytearray(enough_padding_for_duplicates)
         plain_text += chosen_plain_text
         plain_text.append(end_byte)
 
         candidates = set()
+        # Keep trying so we get different offsets
         while len(candidates) < block_size:
             cipher_text = oracle(plain_text)
             candidate = find_block_after_duplicates(cipher_text, block_size)
             candidates.add(candidate)
+#            dictionary[candidate] = end_byte
 
-        duplicates = set()
-        dictionary = dict()
         for candidate in candidates:
             if candidate in duplicates:
                 continue
             if candidate in dictionary:
-                dictionary.remove(candidate)
                 duplicates.add(candidate)
+                del(dictionary[candidate])
                 continue
             dictionary[candidate] = end_byte
+
+#        print("JB - byte [{}] dict {} has {} candidates {} duplicates".format(end_byte, len(dictionary), len(candidates), len(duplicates)))
 
     return dictionary
 
@@ -159,9 +163,10 @@ def find_block_after_duplicates(buf, block_size):
     last_chunk = b''
 
     chunks = chunk(buf, block_size)
-    chunk_index = 0
+#    chunk_index = 0
     for c in chunks:
-        chunk_index += 1
+#        chunk_index += 1
+        # Continue while we keep seeing duplicates
         if c == last_chunk:
             next_is_target = True
             continue
