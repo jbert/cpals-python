@@ -142,7 +142,6 @@ def c14_dictionary_for_block(oracle, block_size, chosen_plain_text):
             cipher_text = oracle(plain_text)
             candidate = find_block_after_duplicates(cipher_text, block_size)
             candidates.add(candidate)
-#            dictionary[candidate] = end_byte
 
         for candidate in candidates:
             if candidate in duplicates:
@@ -153,8 +152,6 @@ def c14_dictionary_for_block(oracle, block_size, chosen_plain_text):
                 continue
             dictionary[candidate] = end_byte
 
-#        print("JB - byte [{}] dict {} has {} candidates {} duplicates".format(end_byte, len(dictionary), len(candidates), len(duplicates)))
-
     return dictionary
 
 
@@ -163,9 +160,7 @@ def find_block_after_duplicates(buf, block_size):
     last_chunk = b''
 
     chunks = chunk(buf, block_size)
-#    chunk_index = 0
     for c in chunks:
-#        chunk_index += 1
         # Continue while we keep seeing duplicates
         if c == last_chunk:
             next_is_target = True
