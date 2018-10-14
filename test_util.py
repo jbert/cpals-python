@@ -1,5 +1,10 @@
 import pytest
-from util import chunk, transpose, pkcs7_unpad
+from util import chunk, transpose, pkcs7_unpad, hexquote_chars
+
+
+def test_hexquote_chars():
+    assert(hexquote_chars(b"", b"ice ice baby") == b"ice ice baby")
+    assert(hexquote_chars(b"i", b"ice ice baby") == b"%69ce %69ce baby")
 
 
 def test_chunk():

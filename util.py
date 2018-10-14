@@ -14,6 +14,13 @@ import itertools
 from random import randrange
 
 
+def hexquote_chars(chars_to_quote, buf):
+    for char in chars_to_quote:
+        replacement = "%{:02x}".format(char).encode('ascii')
+        buf = buf.replace(char.to_bytes(1, byteorder='big'), replacement)
+    return buf
+
+
 def get_random_bytes(size):
     return b''.join(map(lambda x: bytes([randrange(0, 256)]), itertools.repeat(0, size)))
 

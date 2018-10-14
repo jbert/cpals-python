@@ -2,14 +2,64 @@
 from Crypto.Cipher import AES
 import itertools
 import random
-from util import get_random_bytes, chunk, pkcs7_pad, pkcs7_unpad, slurp_base64_file
+from util import get_random_bytes, chunk, pkcs7_pad, pkcs7_unpad, slurp_base64_file, hexquote_chars
 from s1 import xor_buf
 from base64 import b64decode
 from random import randrange
 
 
 def main():
-    c14()
+    c16()
+
+
+def c16():
+    block_size = 16
+    random_key = get_random_bytes(block_size)
+    random_iv = get_random_bytes(block_size)
+
+    payload = bytearray(b";admin=true;")
+    # Hide the special chars by flipping a bit in them
+    payload[0] ^= 0x01
+    payload[6] ^= 0x01
+    payload[11] ^= 0x01
+
+    # Assuming we don't know the prefix, we will try at each offset
+    for offset in range(0, block_size):
+        chosen_plain_text = b'A' * offset
+        # Prepend a sacrificial block, in which we can flip bits
+        chosen_plain_text += b'A' * block_size
+        chosen_plain_text += payload
+
+        cipher_text = bytearray(c16_encryptor(block_size, random_key, random_iv, chosen_plain_text))
+        # We don't know which block to flip. Let's try 'em all
+        for block_index in range(0, (len(cipher_text) // block_size) - 1):
+            # Flip the corresponding bits in the sacrificial block
+            cipher_text[(block_index * block_size) + offset + 0] ^= 0x01;
+            cipher_text[(block_index * block_size) + offset + 6] ^= 0x01;
+            cipher_text[(block_index * block_size) + offset + 11] ^= 0x01;
+            try:
+                if (c16_decryptor(block_size, random_key, random_iv, bytes(cipher_text))):
+                    print("S2C16 got admin")
+                    return
+            except Exception(e):
+                # pkcs 7 fail?
+                pass
+
+    print("S2C16 fail :-(")
+
+
+
+def c16_encryptor(block_size: int, key, iv, plain_text):
+    buf = hexquote_chars(b";=", plain_text)
+    buf = b"comment1=cooking%20MCs;userdata=" + buf + b";comment2=%20like%20a%20pound%20of%20bacon"
+    padded_buf = pkcs7_pad(buf, block_size)
+    return aes128_cbc_encode(key, iv, padded_buf)
+
+
+def c16_decryptor(block_size, key, iv, cipher_text) -> bool:
+    padded_plain_text = aes128_cbc_decode(key, iv, cipher_text)
+    plain_text = pkcs7_unpad(padded_plain_text, block_size)
+    return b";admin=true;" in plain_text
 
 
 def c14():
