@@ -25,9 +25,9 @@ def test_transpose():
 def test_pkcs7_unpad():
     block_size = 16
     assert(pkcs7_unpad(b"ICE ICE BABY\x04\x04\x04\x04", block_size) == b"ICE ICE BABY")
-    with pytest.raises(RuntimeError) as e_info:
-        pkcs7_unpad(b"ICE ICE BABY\x05\x05\x05\x05", block_size) 
-    with pytest.raises(RuntimeError) as e_info:
-        pkcs7_unpad(b"ICE ICE BABY\x01\x02\x03\x04", block_size) 
-    with pytest.raises(RuntimeError) as e_info:
-        pkcs7_unpad(b"ICE ICE BABY\x01", block_size) 
+    with pytest.raises(RuntimeError):
+        pkcs7_unpad(b"ICE ICE BABY\x05\x05\x05\x05", block_size)
+    with pytest.raises(RuntimeError):
+        pkcs7_unpad(b"ICE ICE BABY\x01\x02\x03\x04", block_size)
+    with pytest.raises(RuntimeError):
+        pkcs7_unpad(b"ICE ICE BABY\x01", block_size)

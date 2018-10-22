@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+
 from Crypto.Cipher import AES
 import itertools
 import random
@@ -34,19 +35,18 @@ def c16():
         # We don't know which block to flip. Let's try 'em all
         for block_index in range(0, (len(cipher_text) // block_size) - 1):
             # Flip the corresponding bits in the sacrificial block
-            cipher_text[(block_index * block_size) + offset + 0] ^= 0x01;
-            cipher_text[(block_index * block_size) + offset + 6] ^= 0x01;
-            cipher_text[(block_index * block_size) + offset + 11] ^= 0x01;
+            cipher_text[(block_index * block_size) + offset + 0] ^= 0x01
+            cipher_text[(block_index * block_size) + offset + 6] ^= 0x01
+            cipher_text[(block_index * block_size) + offset + 11] ^= 0x01
             try:
                 if (c16_decryptor(block_size, random_key, random_iv, bytes(cipher_text))):
                     print("S2C16 got admin")
                     return
-            except Exception(e):
+            except Exception:
                 # pkcs 7 fail?
                 pass
 
     print("S2C16 fail :-(")
-
 
 
 def c16_encryptor(block_size: int, key, iv, plain_text):
@@ -484,6 +484,7 @@ def aes128_cbc_encode(key, iv, plain_text):
 
 
 def aes128_cbc_decode(key, iv, cipher_text):
+    cipher_text = bytes(cipher_text)
     ecb_cipher = AES.new(key, AES.MODE_ECB)
     block_size = ecb_cipher.block_size
     if len(cipher_text) % block_size != 0:
