@@ -1,12 +1,40 @@
 #!/usr/bin/python3
 from random import choice
 from util import pkcs7_pad, pkcs7_unpad, chunk, get_random_bytes
-from s2 import aes128_cbc_encode, aes128_cbc_decode
+from s2 import aes128_cbc_encode, aes128_cbc_decode, aes128_ecb_encode
 from base64 import b64decode
+from itertools import count, chain, repeat
 
 
 def main():
-    c17()
+    c18()
+
+
+def c18():
+    b64_cipher_text = b'L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ=='
+    cipher_text = b64decode(b64_cipher_text)
+    key = b'YELLOW SUBMARINE'
+    nonce = 0
+    print("S3C18: {}".format(aes128_ctr(key, nonce, cipher_text)))
+
+
+def aes128_ctr(key, nonce, inbuf):
+
+    def ctr_chunk(t):
+        block_count, nonce = t
+        return nonce.to_bytes(8, byteorder='little') + block_count.to_bytes(8, byteorder='little')
+
+    # Use map since it allows us to use a lazy inf iterator
+    ctr_chunks = map(ctr_chunk, enumerate(repeat(nonce)))
+    key_stream_chunks = map(lambda chunk: aes128_ecb_encode(key, chunk), ctr_chunks)
+    key_stream = chain.from_iterable(key_stream_chunks)     # Stackoverflow cargo cult
+    return bytes([ t[0] ^ t[1] for t in zip(inbuf, key_stream) ])
+
+def aes128_ctr_encode(key, nonce, plain_text):
+    return aes128_ctr(key, nonce, plain_text)
+
+def aes128_ctr_decode(key, nonce, cipher_text):
+    return aes128_ctr(key, nonce, cipher_text)
 
 
 def c17():
