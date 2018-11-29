@@ -20,13 +20,17 @@ def c17():
     cipher_blocks.insert(0, random_iv)
 
     def c17_decryptor(cipher_text):
-        c17_decryptor_good_padding(block_size, random_key, random_iv, cipher_text)
+        return c17_decryptor_good_padding(block_size, random_key, random_iv, cipher_text)
 
-    ...rewrite
-    plain_text = bytearray(map(lambda t: c17_break_block(t[1], cipher_blocks[t[0]+1], c17_decryptor),
-                           filter(lambda t:  t[0]+1 < len(cipher_blocks), enumerate(cipher_blocks))))
+    def break_one_block(i):
+        return c17_break_block(cipher_blocks[i], cipher_blocks[i+1], c17_decryptor)
+
+    len_cipher_blocks = len(cipher_blocks)
+    plain_text = b''.join((map(break_one_block, range(0, len(cipher_blocks)-1))))
+#    plain_text = bytearray(map(lambda t: c17_break_block(t[1], cipher_blocks[t[0]+1], c17_decryptor),
+#                           filter(lambda t:  t[0]+1 < len(cipher_blocks), enumerate(cipher_blocks))))
     plain_text = pkcs7_unpad(plain_text, block_size)
-    print("S3C17: {}", plain_text)
+    print("S3C17: {}".format(plain_text))
 
 
 def c17_break_block(cblock_a, cblock_b, padding_oracle):
@@ -44,18 +48,15 @@ def c17_break_block(cblock_a, cblock_b, padding_oracle):
     attack_block = bytearray()
     xor_data = bytearray()
     recovered_plain_text = bytearray()
-    for attack_index in range(0, block_size):
+    for attack_index in range(block_size-1, -1, -1):
         desired_padding_byte = block_size - attack_index
         found_it = False
         for trial_byte in range(0, 256):
-            print("BB: TB {:02x}".format(trial_byte))
             attack_block[:] = cblock_a
             xor_data = bytearray(map(lambda b: b ^ desired_padding_byte, recovered_plain_text))
             xor_data.insert(0, trial_byte ^ desired_padding_byte)
-            print("BB: XD0: {:02x}".format(xor_data[0]))
             for (i, b) in enumerate(xor_data):
                 attack_block[attack_index + i] = attack_block[attack_index + i] ^ b
-            print("BB: AB0: {:02x}".format(attack_block[0]))
 
             attack_cipher_text = bytearray()
             attack_cipher_text[:] = attack_block
@@ -91,8 +92,6 @@ def c17_decryptor_good_padding(block_size, key, iv, cipher_text):
     except RuntimeError:
         # Bad padding :-(
         return False
-    except Exception as e:
-        raise RuntimeError(e)
 
 
 def c17_encryptor(block_size, key, iv):
