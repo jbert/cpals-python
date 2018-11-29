@@ -1,13 +1,75 @@
 #!/usr/bin/python3
 from random import choice
-from util import pkcs7_pad, pkcs7_unpad, chunk, get_random_bytes
+from util import pkcs7_pad, pkcs7_unpad, chunk, get_random_bytes, transpose
 from s2 import aes128_cbc_encode, aes128_cbc_decode, aes128_ecb_encode
+from s1 import c4_best_single_byte_xor, xor_buf
 from base64 import b64decode
 from itertools import count, chain, repeat
 
 
 def main():
-    c18()
+    c19()
+
+def c19():
+    b64_cipher_texts = [
+            b'SSBoYXZlIG1ldCB0aGVtIGF0IGNsb3NlIG9mIGRheQ==',
+            b'Q29taW5nIHdpdGggdml2aWQgZmFjZXM=',
+            b'RnJvbSBjb3VudGVyIG9yIGRlc2sgYW1vbmcgZ3JleQ==',
+            b'RWlnaHRlZW50aC1jZW50dXJ5IGhvdXNlcy4=',
+            b'SSBoYXZlIHBhc3NlZCB3aXRoIGEgbm9kIG9mIHRoZSBoZWFk',
+            b'T3IgcG9saXRlIG1lYW5pbmdsZXNzIHdvcmRzLA==',
+            b'T3IgaGF2ZSBsaW5nZXJlZCBhd2hpbGUgYW5kIHNhaWQ=',
+            b'UG9saXRlIG1lYW5pbmdsZXNzIHdvcmRzLA==',
+            b'QW5kIHRob3VnaHQgYmVmb3JlIEkgaGFkIGRvbmU=',
+            b'T2YgYSBtb2NraW5nIHRhbGUgb3IgYSBnaWJl',
+            b'VG8gcGxlYXNlIGEgY29tcGFuaW9u',
+            b'QXJvdW5kIHRoZSBmaXJlIGF0IHRoZSBjbHViLA==',
+            b'QmVpbmcgY2VydGFpbiB0aGF0IHRoZXkgYW5kIEk=',
+            b'QnV0IGxpdmVkIHdoZXJlIG1vdGxleSBpcyB3b3JuOg==',
+            b'QWxsIGNoYW5nZWQsIGNoYW5nZWQgdXR0ZXJseTo=',
+            b'QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4=',
+            b'VGhhdCB3b21hbidzIGRheXMgd2VyZSBzcGVudA==',
+            b'SW4gaWdub3JhbnQgZ29vZCB3aWxsLA==',
+            b'SGVyIG5pZ2h0cyBpbiBhcmd1bWVudA==',
+            b'VW50aWwgaGVyIHZvaWNlIGdyZXcgc2hyaWxsLg==',
+            b'V2hhdCB2b2ljZSBtb3JlIHN3ZWV0IHRoYW4gaGVycw==',
+            b'V2hlbiB5b3VuZyBhbmQgYmVhdXRpZnVsLA==',
+            b'U2hlIHJvZGUgdG8gaGFycmllcnM/',
+            b'VGhpcyBtYW4gaGFkIGtlcHQgYSBzY2hvb2w=',
+            b'QW5kIHJvZGUgb3VyIHdpbmdlZCBob3JzZS4=',
+            b'VGhpcyBvdGhlciBoaXMgaGVscGVyIGFuZCBmcmllbmQ=',
+            b'V2FzIGNvbWluZyBpbnRvIGhpcyBmb3JjZTs=',
+            b'SGUgbWlnaHQgaGF2ZSB3b24gZmFtZSBpbiB0aGUgZW5kLA==',
+            b'U28gc2Vuc2l0aXZlIGhpcyBuYXR1cmUgc2VlbWVkLA==',
+            b'U28gZGFyaW5nIGFuZCBzd2VldCBoaXMgdGhvdWdodC4=',
+            b'VGhpcyBvdGhlciBtYW4gSSBoYWQgZHJlYW1lZA==',
+            b'QSBkcnVua2VuLCB2YWluLWdsb3Jpb3VzIGxvdXQu',
+            b'SGUgaGFkIGRvbmUgbW9zdCBiaXR0ZXIgd3Jvbmc=',
+            b'VG8gc29tZSB3aG8gYXJlIG5lYXIgbXkgaGVhcnQs',
+            b'WWV0IEkgbnVtYmVyIGhpbSBpbiB0aGUgc29uZzs=',
+            b'SGUsIHRvbywgaGFzIHJlc2lnbmVkIGhpcyBwYXJ0',
+            b'SW4gdGhlIGNhc3VhbCBjb21lZHk7',
+            b'SGUsIHRvbywgaGFzIGJlZW4gY2hhbmdlZCBpbiBoaXMgdHVybiw=',
+            b'VHJhbnNmb3JtZWQgdXR0ZXJseTo=',
+            b'QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4=',
+            ]
+
+
+    block_size = 16
+    random_key = get_random_bytes(block_size)
+    reused_nonce = 0
+    def c19_cryptor(plain_text):
+        return aes128_ctr_encode(random_key, reused_nonce, plain_text)
+
+    cipher_texts = [b64decode(s) for s in b64_cipher_texts]
+    repeat_length = min(map(len, cipher_texts))
+    repeated_xor = b''.join(s[0:repeat_length] for s in cipher_texts)
+    chunks = [ct[0:repeat_length] for ct in cipher_texts]
+    chunks = transpose(chunks)
+    keystream = bytes(map(lambda t: t[1], map(c4_best_single_byte_xor, chunks)))
+    for ct in cipher_texts:
+        ctt = ct[0:repeat_length]
+        print(xor_buf(ctt, keystream))
 
 
 def c18():
