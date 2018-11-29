@@ -454,6 +454,9 @@ def c10():
 
 
 def aes128_ecb_encode(key, plain_text):
+    plain_text_modlen = len(plain_text) % 16
+    if plain_text_modlen != 0:
+        raise RuntimeError("AES128 ECB input must be 16 byte, not {}".format(plain_text_modlen))
     ecb_cipher = AES.new(key, AES.MODE_ECB)
     return ecb_cipher.encrypt(plain_text)
 
