@@ -10,7 +10,30 @@ from random import randrange
 
 
 def main():
-    c22()
+    c23()
+
+
+def c23():
+    now = int(time())
+    mt = MersenneTwister()
+    mt.seed(now)
+
+    clone = mt_clone(mt)
+
+    for _ in range(0, 10):
+        print("mt {} clone {}".format(mt.genrand_int32(), clone.genrand_int32()))
+
+
+def mt_clone(mt):
+#    state = [ mt.untemper(mt.genrand_int32()) for _ in range(0, mt.n) ]
+    v = mt.untemper(0)
+    state = [ mt.untemper(mt.genrand_int32()) for _ in range(0, mt.n) ]
+    cloned_mt = MersenneTwister()
+    cloned_mt.seed_from_state(state)
+    for _ in range(0, mt.n):
+        cloned_mt.genrand_int32()
+
+    return cloned_mt
 
 
 def c22():
@@ -142,6 +165,7 @@ class MersenneTwister():
 
             read_bitmask = read_bitmask << 1
             write_bitmask = write_bitmask << 1
+            write_bitmask &= 0xffffffff
         return y
 
     def twist(self):
