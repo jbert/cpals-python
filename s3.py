@@ -5,10 +5,155 @@ from s2 import aes128_cbc_encode, aes128_cbc_decode, aes128_ecb_encode
 from s1 import c4_best_single_byte_xor, xor_buf
 from base64 import b64decode
 from itertools import count, chain, repeat
+from time import time, sleep
+from random import randrange
 
 
 def main():
-    c19()
+    c22()
+
+
+def c22():
+    now = int(time())
+    mt = MersenneTwister()
+    mt.seed(now)
+
+    sleep_secs = randrange(2, 7)
+    print("Sleeping for {} seconds".format(sleep_secs))
+    sleep(sleep_secs)
+
+    val = mt.genrand_int32()
+
+    guessed_seed = guess_recent_time_seed(val)
+    print("seed {} guess {} gotit {}".format(now, guessed_seed, guessed_seed == now))
+
+
+def guess_recent_time_seed(v):
+    now = int(time())
+    for delta in range(0, 100):
+        seed = now - delta
+        mt = MersenneTwister()
+        mt.seed(seed)
+        if mt.genrand_int32() == v:
+            return seed
+
+    raise RuntimeError("Didn't find it")
+
+
+def c21():
+
+    mt = MersenneTwister()
+    mt.seed(0)
+    for i in range(0, 10):
+        print(mt.genrand_int32())
+
+class MersenneTwister():
+
+    def __init__(self):
+
+        self.w = 32
+        self.n = 624
+        self.m = 397
+        self.r = 31
+        self.a = 0x9908B0DF
+        self.u = 11
+        self.d = 0xFFFFFFFF
+        self.s = 7
+        self.b = 0x9D2C5680
+        self.t = 15
+        self.c = 0xEFC60000
+        self.l = 18
+        self.f = 1812433253
+
+        self.mt = list(repeat(0, self.n))
+
+        self.index = self.n + 1
+
+    def seed_from_state(self, state):
+        if len(state) != self.n:
+            raise RuntimeError("Invalid state size: {}", len(state))
+
+        self.mt = state
+        self.index = 0
+
+    def seed(self, seed):
+        self.index = self.n
+        self.mt[0] = seed
+        for i in range(1, self.n):
+            # Truncate to 32bit
+            self.mt[i] = (self.f * (self.mt[i - 1] ^ (self.mt[i - 1] >> (self.w - 2))) + i) & self.d
+
+    def genrand_int32(self):
+        if self.index >= self.n:
+            if self.index > self.n:
+                # Alternatively, seed with constant value; 5489 is used in reference C code[46]
+                raise RuntimeError("Generator was never seeded")
+
+            self.twist()
+
+        y = self.mt[self.index]
+        self.index = self.index + 1;
+        return self.temper(y)
+
+    def genrand_buf(self, length):
+        return [self.genrand_int32() for _ in range(0, length)]
+
+    def temper(self, y):
+        y = self.rshift(y, self.u, self.d)
+        y = self.lshift(y, self.s, self.b)
+        y = self.lshift(y, self.t, self.c)
+        y = self.rshift(y, self.l, 0xffffffff)
+
+        return y
+
+    def untemper(self, y):
+        y = self.invert_rshift(y, self.l, 0xffffffff)
+        y = self.invert_lshift(y, self.t, self.c)
+        y = self.invert_lshift(y, self.s, self.b)
+        y = self.invert_rshift(y, self.u, self.d)
+
+        return y
+
+    def rshift(self, y, num_bits, mask):
+        return y ^ ((y >> num_bits) & mask)
+
+    def lshift(self, y, num_bits, mask):
+        return y ^ ((y << num_bits) & mask)
+
+    def invert_rshift(self, y, num_bits, mask):
+        read_bitmask = 1 << 31;
+        write_bitmask = read_bitmask >> num_bits;
+        while write_bitmask > 0:
+            bit = y & read_bitmask
+            if bit != 0:
+                y = y ^ write_bitmask & mask
+
+            read_bitmask = read_bitmask >> 1
+            write_bitmask = write_bitmask >> 1
+        return y
+
+    def invert_lshift(self, y, num_bits, mask):
+        read_bitmask = 1
+        write_bitmask = read_bitmask << num_bits
+        while write_bitmask > 0:
+            bit = y & read_bitmask
+            if bit != 0:
+                y = y ^ write_bitmask & mask
+
+            read_bitmask = read_bitmask << 1
+            write_bitmask = write_bitmask << 1
+        return y
+
+    def twist(self):
+        lower_mask = (1 << self.r) - 1
+        upper_mask = lower_mask ^ 0xffffffff
+        for i in range(0, self.n):
+            x = (self.mt[i] & upper_mask) + ((self.mt[(i + 1) % self.n]) & lower_mask)
+            x_a = x >> 1
+            if x % 2 != 0:
+                x_a = x_a ^ self.a
+            self.mt[i] = self.mt[(i + self.m) % self.n] ^ x_a
+        self.index = 0;
 
 def c19():
     b64_cipher_texts = [
