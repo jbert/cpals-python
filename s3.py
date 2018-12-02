@@ -4,12 +4,13 @@ from util import pkcs7_pad, pkcs7_unpad, chunk, get_random_bytes, transpose
 from s2 import aes128_cbc_encode, aes128_cbc_decode, aes128_ecb_encode
 from s1 import c4_best_single_byte_xor, xor_buf
 from base64 import b64decode
-from itertools import count, chain, repeat
+from itertools import chain, repeat
 from time import time, sleep
 
 
 def main():
     c24()
+
 
 def c24():
     secret_seed = 1234
@@ -24,7 +25,7 @@ def c24_crack_seed(cipher_text):
         mt = MersenneTwister()
         mt.seed(guessed_seed)
         ks = MTKeyStream(mt)
-        xored_buf = bytes([ t[0] ^ t[1] for t in zip(ks, cipher_text) ])
+        xored_buf = bytes([t[0] ^ t[1] for t in zip(ks, cipher_text)])
         if known_plaintext in xored_buf:
             return guessed_seed
 
@@ -36,11 +37,12 @@ def c24_cryptor(seed):
     random_prefix = get_random_bytes(randrange(10, 20))
     return mt_ctr(seed, random_prefix + known_plain_text)
 
+
 def mt_ctr(seed, inbuf):
     mt = MersenneTwister()
     mt.seed(seed)
     ks = MTKeyStream(mt)
-    return bytes([ t[0] ^ t[1] for t in zip(ks, inbuf) ])
+    return bytes([t[0] ^ t[1] for t in zip(ks, inbuf)])
 
 
 class MTKeyStream():
@@ -62,6 +64,7 @@ class MTKeyStream():
         if len(self.buffer) == 0:
             self.buffer = self.mt.genrand_int32().to_bytes(4, byteorder='big')
 
+
 def c23():
     now = int(time())
     mt = MersenneTwister()
@@ -74,9 +77,7 @@ def c23():
 
 
 def mt_clone(mt):
-#    state = [ mt.untemper(mt.genrand_int32()) for _ in range(0, mt.n) ]
-    v = mt.untemper(0)
-    state = [ mt.untemper(mt.genrand_int32()) for _ in range(0, mt.n) ]
+    state = [mt.untemper(mt.genrand_int32()) for _ in range(0, mt.n)]
     cloned_mt = MersenneTwister()
     cloned_mt.seed_from_state(state)
     for _ in range(0, mt.n):
@@ -119,6 +120,7 @@ def c21():
     for i in range(0, 10):
         print(mt.genrand_int32())
 
+
 class MersenneTwister():
 
     def __init__(self):
@@ -134,7 +136,7 @@ class MersenneTwister():
         self.b = 0x9D2C5680
         self.t = 15
         self.c = 0xEFC60000
-        self.l = 18
+        self.L = 18
         self.f = 1812433253
 
         self.mt = list(repeat(0, self.n))
@@ -164,7 +166,7 @@ class MersenneTwister():
             self.twist()
 
         y = self.mt[self.index]
-        self.index = self.index + 1;
+        self.index = self.index + 1
         return self.temper(y)
 
     def genrand_buf(self, length):
@@ -174,12 +176,12 @@ class MersenneTwister():
         y = self.rshift(y, self.u, self.d)
         y = self.lshift(y, self.s, self.b)
         y = self.lshift(y, self.t, self.c)
-        y = self.rshift(y, self.l, 0xffffffff)
+        y = self.rshift(y, self.L, 0xffffffff)
 
         return y
 
     def untemper(self, y):
-        y = self.invert_rshift(y, self.l, 0xffffffff)
+        y = self.invert_rshift(y, self.L, 0xffffffff)
         y = self.invert_lshift(y, self.t, self.c)
         y = self.invert_lshift(y, self.s, self.b)
         y = self.invert_rshift(y, self.u, self.d)
@@ -193,8 +195,8 @@ class MersenneTwister():
         return y ^ ((y << num_bits) & mask)
 
     def invert_rshift(self, y, num_bits, mask):
-        read_bitmask = 1 << 31;
-        write_bitmask = read_bitmask >> num_bits;
+        read_bitmask = 1 << 31
+        write_bitmask = read_bitmask >> num_bits
         while write_bitmask > 0:
             bit = y & read_bitmask
             if bit != 0:
@@ -226,7 +228,8 @@ class MersenneTwister():
             if x % 2 != 0:
                 x_a = x_a ^ self.a
             self.mt[i] = self.mt[(i + self.m) % self.n] ^ x_a
-        self.index = 0;
+        self.index = 0
+
 
 def c19():
     b64_cipher_texts = [
@@ -272,16 +275,15 @@ def c19():
             b'QSB0ZXJyaWJsZSBiZWF1dHkgaXMgYm9ybi4=',
             ]
 
-
     block_size = 16
     random_key = get_random_bytes(block_size)
     reused_nonce = 0
+
     def c19_cryptor(plain_text):
         return aes128_ctr_encode(random_key, reused_nonce, plain_text)
 
     cipher_texts = [b64decode(s) for s in b64_cipher_texts]
     repeat_length = min(map(len, cipher_texts))
-    repeated_xor = b''.join(s[0:repeat_length] for s in cipher_texts)
     chunks = [ct[0:repeat_length] for ct in cipher_texts]
     chunks = transpose(chunks)
     keystream = bytes(map(lambda t: t[1], map(c4_best_single_byte_xor, chunks)))
@@ -308,10 +310,12 @@ def aes128_ctr(key, nonce, inbuf):
     ctr_chunks = map(ctr_chunk, enumerate(repeat(nonce)))
     key_stream_chunks = map(lambda chunk: aes128_ecb_encode(key, chunk), ctr_chunks)
     key_stream = chain.from_iterable(key_stream_chunks)     # Stackoverflow cargo cult
-    return bytes([ t[0] ^ t[1] for t in zip(inbuf, key_stream) ])
+    return bytes([t[0] ^ t[1] for t in zip(inbuf, key_stream)])
+
 
 def aes128_ctr_encode(key, nonce, plain_text):
     return aes128_ctr(key, nonce, plain_text)
+
 
 def aes128_ctr_decode(key, nonce, cipher_text):
     return aes128_ctr(key, nonce, cipher_text)
@@ -333,10 +337,7 @@ def c17():
     def break_one_block(i):
         return c17_break_block(cipher_blocks[i], cipher_blocks[i+1], c17_decryptor)
 
-    len_cipher_blocks = len(cipher_blocks)
     plain_text = b''.join((map(break_one_block, range(0, len(cipher_blocks)-1))))
-#    plain_text = bytearray(map(lambda t: c17_break_block(t[1], cipher_blocks[t[0]+1], c17_decryptor),
-#                           filter(lambda t:  t[0]+1 < len(cipher_blocks), enumerate(cipher_blocks))))
     plain_text = pkcs7_unpad(plain_text, block_size)
     print("S3C17: {}".format(plain_text))
 

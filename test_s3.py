@@ -25,4 +25,3 @@ def test_mt_ctr():
     assert plain_text != cipher_text, "encoding works..."
     decoded_cipher_text = mt_ctr(seed, cipher_text)
     assert decoded_cipher_text == plain_text, "decoding works..."
-
