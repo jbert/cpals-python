@@ -1,17 +1,66 @@
 #!/usr/bin/python3
-from random import choice
+from random import choice, randrange
 from util import pkcs7_pad, pkcs7_unpad, chunk, get_random_bytes, transpose
 from s2 import aes128_cbc_encode, aes128_cbc_decode, aes128_ecb_encode
 from s1 import c4_best_single_byte_xor, xor_buf
 from base64 import b64decode
 from itertools import count, chain, repeat
 from time import time, sleep
-from random import randrange
 
 
 def main():
-    c23()
+    c24()
 
+def c24():
+    secret_seed = 1234
+    cipher_text = c24_cryptor(secret_seed)
+    cracked_seed = c24_crack_seed(cipher_text)
+    print("Got seed {}, secret {} which matches? {}".format(cracked_seed, secret_seed, cracked_seed == secret_seed))
+
+
+def c24_crack_seed(cipher_text):
+    known_plaintext = b'A' * 14
+    for guessed_seed in range(0, 65536):
+        mt = MersenneTwister()
+        mt.seed(guessed_seed)
+        ks = MTKeyStream(mt)
+        xored_buf = bytes([ t[0] ^ t[1] for t in zip(ks, cipher_text) ])
+        if known_plaintext in xored_buf:
+            return guessed_seed
+
+    raise RuntimeError("No find it")
+
+
+def c24_cryptor(seed):
+    known_plain_text = b'A' * 15
+    random_prefix = get_random_bytes(randrange(10, 20))
+    return mt_ctr(seed, random_prefix + known_plain_text)
+
+def mt_ctr(seed, inbuf):
+    mt = MersenneTwister()
+    mt.seed(seed)
+    ks = MTKeyStream(mt)
+    return bytes([ t[0] ^ t[1] for t in zip(ks, inbuf) ])
+
+
+class MTKeyStream():
+
+    def __init__(self, mt):
+        self.mt = mt
+
+    def __iter__(self):
+        self.buffer = []
+        return self
+
+    def __next__(self):
+        self._fill_buffer()
+        v = self.buffer[0]
+        self.buffer = self.buffer[1:]
+        return v
+
+    def _fill_buffer(self):
+        if len(self.buffer) == 0:
+            self.buffer = self.mt.genrand_int32().to_bytes(4, byteorder='big')
 
 def c23():
     now = int(time())

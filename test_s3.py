@@ -1,4 +1,4 @@
-from s3 import MersenneTwister
+from s3 import MersenneTwister, mt_ctr
 
 
 def test_mt_seed():
@@ -16,3 +16,13 @@ def test_mt_seed():
         x = mt_x.genrand_int32()
         assert a == b, "Same seed for iteration {} still the same".format(i)
         assert a != x, "Diff seed for iteration {} still the same".format(i)
+
+
+def test_mt_ctr():
+    seed = 1234
+    plain_text = b"why hello there"
+    cipher_text = mt_ctr(seed, plain_text)
+    assert plain_text != cipher_text, "encoding works..."
+    decoded_cipher_text = mt_ctr(seed, cipher_text)
+    assert decoded_cipher_text == plain_text, "decoding works..."
+
